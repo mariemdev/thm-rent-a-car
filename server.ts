@@ -377,33 +377,52 @@ async function initializeDatabase() {
     }
     console.log('Seeded colors');
 
-    // Seed agency and branches - force re-seed by deleting existing
-    console.log('Deleting existing agencies and branches...');
-    await pool.query('DELETE FROM cars');
-    await pool.query('DELETE FROM branches');
-    await pool.query('DELETE FROM agencies');
-    
-    console.log('Seeding agency...');
-    const agencyResult = await pool.query(
-      'INSERT INTO agencies (name, address, phone) VALUES ($1, $2, $3) RETURNING id',
-      ["THM RENT A CAR", "Tunis, Tunisie", "+216 71 000 000"]
-    );
-    const agencyId = agencyResult.rows[0].id;
-    console.log('Agency created with ID:', agencyId);
+    // Seed agency and branches - only if they don't exist
+    console.log('Seeding agency and branches...');
+    let agencyId, branchId;
 
-    console.log('Seeding branches...');
-    const branchResult = await pool.query(
-      'INSERT INTO branches (name, address, phone, agency_id) VALUES ($1, $2, $3, $4) RETURNING id',
-      ["Tunis", "Tunis Centre", "+216 71 000 001", agencyId]
-    );
-    const branchId = branchResult.rows[0].id;
-    console.log('Branch created with ID:', branchId);
+    // Check if agency exists
+    const existingAgency = await pool.query('SELECT id FROM agencies WHERE name = $1', ["THM RENT A CAR"]);
+    if (existingAgency.rows.length === 0) {
+      console.log('Creating agency...');
+      const agencyResult = await pool.query(
+        'INSERT INTO agencies (name, address, phone) VALUES ($1, $2, $3) RETURNING id',
+        ["THM RENT A CAR", "Tunis, Tunisie", "+216 71 000 000"]
+      );
+      agencyId = agencyResult.rows[0].id;
+      console.log('Agency created with ID:', agencyId);
+    } else {
+      agencyId = existingAgency.rows[0].id;
+      console.log('Agency already exists with ID:', agencyId);
+    }
 
-    await pool.query(
-      'INSERT INTO branches (name, address, phone, agency_id) VALUES ($1, $2, $3, $4)',
-      ["Bizerte", "Bizerte Port", "+216 72 000 002", agencyId]
-    );
-    console.log('Second branch created');
+    // Check if branch exists
+    const existingBranch = await pool.query('SELECT id FROM branches WHERE name = $1 AND agency_id = $2', ["Tunis", agencyId]);
+    if (existingBranch.rows.length === 0) {
+      console.log('Creating branch...');
+      const branchResult = await pool.query(
+        'INSERT INTO branches (name, address, phone, agency_id) VALUES ($1, $2, $3, $4) RETURNING id',
+        ["Tunis", "Tunis Centre", "+216 71 000 001", agencyId]
+      );
+      branchId = branchResult.rows[0].id;
+      console.log('Branch created with ID:', branchId);
+    } else {
+      branchId = existingBranch.rows[0].id;
+      console.log('Branch already exists with ID:', branchId);
+    }
+
+    // Check if second branch exists
+    const existingBranch2 = await pool.query('SELECT id FROM branches WHERE name = $1 AND agency_id = $2', ["Bizerte", agencyId]);
+    if (existingBranch2.rows.length === 0) {
+      console.log('Creating second branch...');
+      await pool.query(
+        'INSERT INTO branches (name, address, phone, agency_id) VALUES ($1, $2, $3, $4)',
+        ["Bizerte", "Bizerte Port", "+216 72 000 002", agencyId]
+      );
+      console.log('Second branch created');
+    } else {
+      console.log('Second branch already exists');
+    }
 
     console.log('Seeding test cars...');
     const testCars = [
@@ -1085,6 +1104,7 @@ async function startServer() {
   app.post("/api/cars", authenticateToken, async (req, res) => {
     try {
       const carData = req.body;
+      console.log('POST /api/cars - received carData.images:', carData.images?.substring(0, 100) || 'undefined');
       // Use authenticated user's agency_id/branch_id if not provided
       const agencyId = carData.agency_id !== undefined && carData.agency_id !== '' ? carData.agency_id : req.user.agency_id;
       const branchId = carData.branch_id !== undefined && carData.branch_id !== '' ? carData.branch_id : req.user.branch_id;
@@ -1123,6 +1143,7 @@ async function startServer() {
         ]
       );
       
+      console.log('POST /api/cars - car created with images:', result.rows[0].images?.substring(0, 100) || 'undefined');
       res.json(result.rows[0]);
     } catch (error) {
       console.error('Error creating car:', error);

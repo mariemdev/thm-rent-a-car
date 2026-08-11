@@ -101,8 +101,6 @@ export default function Cars() {
   const [isAddingNewColor, setIsAddingNewColor] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [newColorName, setNewColorName] = useState("");
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
   const [isDeleteRepairConfirmOpen, setIsDeleteRepairConfirmOpen] = useState(false);
   const [repairToDelete, setRepairToDelete] = useState<number | null>(null);
   const [repairFilterDateStart, setRepairFilterDateStart] = useState("");
@@ -309,42 +307,6 @@ export default function Cars() {
     }
   };
 
-  const handleBulkDelete = async () => {
-    const hasRentalIds = selectedIds.filter(id => rentals.some(r => r.car_id === id));
-    if (hasRentalIds.length > 0) {
-      toast.error("Certains véhicules sélectionnés ne peuvent pas être supprimés car ils sont déjà associés à des locations.");
-      return;
-    }
-    try {
-      const res = await api.bulkDeleteCars(selectedIds);
-      if (res.failed > 0) {
-        toast.info(`${res.deleted} voitures supprimées, ${res.failed} échecs (contraintes ou permissions)`);
-      } else {
-        toast.success(`${res.deleted} voitures supprimées avec succès`);
-      }
-      setSelectedIds([]);
-      fetchData();
-    } catch (error: any) {
-      toast.error(error.message || t("common.error"));
-    }
-  };
-
-  const handleToggleSelectAll = () => {
-    if (selectedIds.length === filteredCars.length && filteredCars.length > 0) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredCars.map(c => c.id));
-    }
-  };
-
-  const handleToggleSelect = (id: number) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(i => i !== id));
-    } else {
-      setSelectedIds([...selectedIds, id]);
-    }
-  };
-
   const handleDeleteRepair = async () => {
     if (repairToDelete === null) return;
     try {
@@ -374,19 +336,23 @@ export default function Cars() {
     setSaving(true);
     try {
       const registration = `${newCar.reg_part1} ${newCar.reg_partTU} ${newCar.reg_part2}`;
-      await api.createCar({ 
+      const carData = { 
         ...newCar, 
         registration,
         fuel_type: newCar.fuel_type || "Essence",
         mileage: parseInt(newCar.mileage || "0"),
         seats: parseInt(newCar.seats || "5"),
-        agency_id: (user.role === 'admin' || user.role === 'superadmin') ? (newCar.agency_id || user.agency_id) : user.agency_id
-      });
+        agency_id: (user.role === 'admin' || user.role === 'superadmin') ? (newCar.agency_id || user.agency_id) : user.agency_id,
+        images: Array.isArray(newCar.images) ? JSON.stringify(newCar.images) : newCar.images
+      };
+      console.log('Creating car with images:', carData.images?.length || 0, 'images');
+      await api.createCar(carData);
       toast.success(t("common.success"));
       setIsAddOpen(false);
       fetchData();
       setNewCar(initialCarState);
     } catch (error: any) {
+      console.error('Error creating car:', error);
       toast.error(error.message || t("common.error"));
     } finally {
       setSaving(false);
@@ -469,16 +435,20 @@ export default function Cars() {
     setSaving(true);
     try {
       const registration = editingCar.reg_part1 ? `${editingCar.reg_part1} ${editingCar.reg_partTU} ${editingCar.reg_part2}` : editingCar.registration;
-      await api.updateCar(editingCar.id, {
+      const carData = {
         ...editingCar,
         registration,
         mileage: parseInt(editingCar.mileage || "0"),
-        seats: parseInt(editingCar.seats || "5")
-      });
+        seats: parseInt(editingCar.seats || "5"),
+        images: Array.isArray(editingCar.images) ? JSON.stringify(editingCar.images) : editingCar.images
+      };
+      console.log('Updating car with images:', carData.images?.length || 0, 'images');
+      await api.updateCar(editingCar.id, carData);
       toast.success(t("common.success"));
       setIsEditOpen(false);
       fetchData();
     } catch (error: any) {
+      console.error('Error updating car:', error);
       toast.error(error.message || t("common.error"));
     } finally {
       setSaving(false);
@@ -1176,32 +1146,11 @@ export default function Cars() {
 
         <Card className="border border-slate-150 shadow-md overflow-hidden rounded-2xl bg-white">
           <div className="p-4 border-b border-slate-50 flex flex-col md:flex-row gap-4 items-center">
-            {selectedIds.length > 0 ? (
-              <div className="flex items-center gap-3 px-4 py-2 bg-red-50 border border-red-100 rounded-md animate-in zoom-in-95 duration-200 flex-1 w-full font-bold text-red-700">
-                <span>{selectedIds.length} véhicule(s) sélectionné(s)</span>
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  onClick={() => setIsBulkDeleteOpen(true)}
-                  className="bg-red-600 hover:bg-red-700 h-8 rounded-md"
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Supprimer la sélection
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setSelectedIds([])}
-                  className="h-8 rounded-md text-slate-500"
-                >
-                  Annuler
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-1 w-full flex-col sm:flex-row items-center gap-3">
-                <div className="relative flex-1 w-full">
-                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <Input 
-                    placeholder="Rechercher par marque, modèle, immatriculation, catégorie..." 
+            <div className="flex flex-1 w-full flex-col sm:flex-row items-center gap-3">
+              <div className="relative flex-1 w-full">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input 
+                  placeholder="Rechercher par marque, modèle, immatriculation, catégorie..." 
                     value={search || ""}
                     onChange={e => setSearch(e.target.value)}
                     className="pl-10 h-11 bg-slate-50/70 border-none rounded-xl focus:ring-2 focus:ring-blue-500 transition-all w-full text-slate-800 placeholder-slate-450"
@@ -1236,7 +1185,6 @@ export default function Cars() {
                   )}
                 </div>
               </div>
-            )}
           </div>
 
           <AnimatePresence>
@@ -1463,14 +1411,6 @@ export default function Cars() {
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow className="hover:bg-transparent border-slate-100">
-                <TableHead className="w-[40px] px-4">
-                   <input 
-                    type="checkbox" 
-                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    checked={filteredCars.length > 0 && selectedIds.length === filteredCars.length}
-                    onChange={handleToggleSelectAll}
-                  />
-                </TableHead>
                 <TableHead className="w-[100px] font-bold text-slate-500 uppercase text-[10px] tracking-wider">{t("cars.images")}</TableHead>
                 <TableHead className="font-bold text-slate-500 uppercase text-[10px] tracking-wider">{t("cars.brand")} & {t("cars.model")}</TableHead>
                 <TableHead className="font-bold text-slate-500 uppercase text-[10px] tracking-wider">{t("cars.registration")}</TableHead>
@@ -1481,19 +1421,11 @@ export default function Cars() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={7} className="h-48 text-center">Chargement...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="h-48 text-center">Chargement...</TableCell></TableRow>
               ) : filteredCars.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="h-48 text-center text-slate-500">No cars found.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="h-48 text-center text-slate-500">No cars found.</TableCell></TableRow>
               ) : filteredCars.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((car) => (
-                <TableRow key={car.id} className={cn("hover:bg-slate-50/50 transition-colors border-slate-50", selectedIds.includes(car.id) && "bg-blue-50/30")}>
-                  <TableCell className="px-4">
-                    <input 
-                      type="checkbox" 
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      checked={selectedIds.includes(car.id)}
-                      onChange={() => handleToggleSelect(car.id)}
-                    />
-                  </TableCell>
+                <TableRow key={car.id} className="hover:bg-slate-50/50 transition-colors border-slate-50">
                   <TableCell>
                     <div className="w-16 h-12 rounded-md bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                       {(() => {
@@ -2641,14 +2573,6 @@ export default function Cars() {
         onConfirm={handleDeleteCar}
         title="Supprimer la voiture"
         description={`Êtes-vous sûr de vouloir supprimer ${selectedCar?.brand} ${selectedCar?.model} (${selectedCar?.registration}) ? Cette action est irréversible.`}
-      />
-
-      <ConfirmDialog
-        open={isBulkDeleteOpen}
-        onOpenChange={setIsBulkDeleteOpen}
-        onConfirm={handleBulkDelete}
-        title="Suppression groupée"
-        description={`Êtes-vous sûr de vouloir supprimer les ${selectedIds.length} véhicules sélectionnés ? Cette action filtrera automatiquement ceux ayant des locations en cours.`}
       />
 
       <ConfirmDialog

@@ -19,8 +19,8 @@ export default function Login() {
   );
 
   // Login states
-  const [email, setEmail] = useState("admin@automanager.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
