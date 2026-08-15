@@ -49,7 +49,11 @@ export default function Settings() {
     excess_km_price: 0.5,
     terms_fr: "",
     terms_ar: "",
-    vehicle_condition_image: ""
+    vehicle_condition_image: "",
+    smtp_host: "",
+    smtp_port: "",
+    smtp_user: "",
+    smtp_pass: ""
   });
 
   useEffect(() => {
@@ -300,6 +304,60 @@ export default function Settings() {
                   onChange={handleVehicleImageUpload}
                   className="cursor-pointer h-11 rounded-xl border-slate-200"
                 />
+              </div>
+            </div>
+
+            {/* Configuration SMTP */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                <Mail className="w-5 h-5 text-blue-600" />
+                Configuration Email (SMTP)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Serveur SMTP</Label>
+                  <Input 
+                    value={settings.smtp_host || ""} 
+                    onChange={e => setSettings({...settings, smtp_host: e.target.value})}
+                    placeholder="smtp.gmail.com"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Port SMTP</Label>
+                  <Input 
+                    type="number"
+                    value={settings.smtp_port || ""} 
+                    onChange={e => setSettings({...settings, smtp_port: e.target.value})}
+                    placeholder="465"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Email SMTP</Label>
+                  <Input 
+                    type="email"
+                    value={settings.smtp_user || ""} 
+                    onChange={e => setSettings({...settings, smtp_user: e.target.value})}
+                    placeholder="votre-email@gmail.com"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-bold text-slate-700">Mot de passe SMTP</Label>
+                  <Input 
+                    type="password"
+                    value={settings.smtp_pass || ""} 
+                    onChange={e => setSettings({...settings, smtp_pass: e.target.value})}
+                    placeholder="Mot de passe d'application"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-200"
+                  />
+                </div>
+              </div>
+              <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl">
+                <p className="text-amber-800 text-sm">
+                  <strong>Note :</strong> Pour Gmail, utilisez un mot de passe d'application. Activez la vérification en 2 étapes sur votre compte Google, puis générez un mot de passe d'application dans les paramètres de sécurité.
+                </p>
               </div>
             </div>
 

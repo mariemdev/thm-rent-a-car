@@ -1488,11 +1488,14 @@ export default function Cars() {
                           className="h-8 w-8 text-blue-500 hover:text-blue-700 hover:bg-white rounded-lg transition-all"
                           onClick={() => {
                             const regParts = car.registration ? car.registration.split(' ') : ['', 'TU', ''];
+                            // Parse images from JSON string if needed
+                            const parsedImages = typeof car.images === 'string' ? JSON.parse(car.images) : car.images;
                             setEditingCar({
                               ...car,
                               reg_part1: regParts[0] || "",
                               reg_partTU: regParts[1] || "TU",
-                              reg_part2: regParts[2] || ""
+                              reg_part2: regParts[2] || "",
+                              images: Array.isArray(parsedImages) ? parsedImages : []
                             });
                             setIsEditOpen(true);
                           }}
@@ -1836,11 +1839,14 @@ export default function Cars() {
             <Button 
                 onClick={() => {
                     const regParts = selectedCar.registration ? selectedCar.registration.split(' ') : ['', 'TU', ''];
+                    // Parse images from JSON string if needed
+                    const parsedImages = typeof selectedCar.images === 'string' ? JSON.parse(selectedCar.images) : selectedCar.images;
                     setEditingCar({
                       ...selectedCar,
                       reg_part1: regParts[0] || "",
                       reg_partTU: regParts[1] || "TU",
-                      reg_part2: regParts[2] || ""
+                      reg_part2: regParts[2] || "",
+                      images: Array.isArray(parsedImages) ? parsedImages : []
                     });
                     setIsDetailsOpen(false);
                     setIsEditOpen(true);
@@ -2573,6 +2579,7 @@ export default function Cars() {
         onConfirm={handleDeleteCar}
         title="Supprimer la voiture"
         description={`Êtes-vous sûr de vouloir supprimer ${selectedCar?.brand} ${selectedCar?.model} (${selectedCar?.registration}) ? Cette action est irréversible.`}
+        confirmText="Supprimer"
       />
 
       <ConfirmDialog
@@ -2581,6 +2588,7 @@ export default function Cars() {
         onConfirm={handleDeleteRepair}
         title="Supprimer la réparation"
         description="Êtes-vous sûr de vouloir supprimer cette intervention de l'historique ?"
+        confirmText="Supprimer"
       />
 
       <Dialog open={isImageViewerOpen} onOpenChange={setIsImageViewerOpen}>

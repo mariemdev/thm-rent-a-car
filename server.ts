@@ -359,25 +359,32 @@ async function initializeDatabase() {
       console.log('Created admin user');
     }
 
-    // Seed brands - force re-seed
+    // Seed brands - only if table is empty (PRODUCTION SAFE)
     console.log('Seeding brands...');
-    await pool.query('DELETE FROM brands');
-    const brands = ["Mercedes-Benz", "BMW", "Audi", "Tesla", "Porsche", "Renault", "Peugeot", "Volkswagen", "Toyota", "Kia", "Hyundai", "Fiat"];
-    for (const brand of brands) {
-      await pool.query('INSERT INTO brands (name) VALUES ($1)', [brand]);
+    const brandCount = await pool.query('SELECT COUNT(*) as count FROM brands');
+    if (brandCount.rows[0].count === 0) {
+      const brands = ["Mercedes-Benz", "BMW", "Audi", "Volkswagen", "Peugeot", "Renault", "Toyota", "Honda", "Ford", "Nissan", "Hyundai", "Kia", "Citroën", "Fiat", "Opel", "Volvo", "Skoda", "Seat", "Mazda", "Suzuki", "Mitsubishi", "Subaru", "Lexus", "Infiniti", "Acura", "Tesla", "Porsche", "Jaguar", "Land Rover", "Mini", "Smart", "Ferrari", "Lamborghini", "Maserati", "Bentley", "Rolls-Royce", "Bugatti"];
+      for (const brand of brands) {
+        await pool.query('INSERT INTO brands (name) VALUES ($1)', [brand]);
+      }
+      console.log('Seeded brands');
+    } else {
+      console.log('Brands already exist, skipping seeding (PROTECTION: preserving existing data)');
     }
-    console.log('Seeded brands');
 
-    // Seed colors - force re-seed
+    // Seed colors - only if table is empty (PRODUCTION SAFE)
     console.log('Seeding colors...');
-    await pool.query('DELETE FROM colors');
-    const colors = ["Noir", "Blanc", "Gris", "Bleu", "Rouge", "Argent", "Beige", "Marron"];
-    for (const color of colors) {
-      await pool.query('INSERT INTO colors (name) VALUES ($1)', [color]);
+    const colorCount = await pool.query('SELECT COUNT(*) as count FROM colors');
+    if (colorCount.rows[0].count === 0) {
+      const colors = ["Noir", "Blanc", "Gris", "Argent", "Bleu", "Rouge", "Vert", "Jaune", "Orange", "Marron", "Beige", "Bronze", "Or", "Rose", "Violet", "Turquoise", "Cyan", "Magenta", "Lavande", "Corail", "Indigo", "Olive", "Kaki", "Sable", "Crème", "Ivoire", "Écru", "Anthracite", "Champagne", "Bordeaux", "Bleu Marine"];
+      for (const color of colors) {
+        await pool.query('INSERT INTO colors (name) VALUES ($1)', [color]);
+      }
+      console.log('Seeded colors');
+    } else {
+      console.log('Colors already exist, skipping seeding (PROTECTION: preserving existing data)');
     }
-    console.log('Seeded colors');
 
-    // Seed agency and branches - only if they don't exist
     console.log('Seeding agency and branches...');
     let agencyId, branchId;
 
@@ -520,7 +527,36 @@ async function initializeDatabase() {
 }
 
 // Transporter and email sending helpers
+let cachedSmtpSettings: any = null;
+
+async function loadSmtpSettings() {
+  try {
+    const settingsResult = await pool.query('SELECT smtp_host, smtp_port, smtp_user, smtp_pass FROM settings LIMIT 1');
+    const dbSettings = settingsResult.rows[0];
+    if (dbSettings && dbSettings.smtp_host && dbSettings.smtp_user && dbSettings.smtp_pass) {
+      cachedSmtpSettings = dbSettings;
+      console.log("SMTP settings loaded from database");
+    }
+  } catch (error) {
+    console.log("Could not load SMTP settings from database");
+  }
+}
+
 function getTransporter() {
+  // Use cached database settings first
+  if (cachedSmtpSettings && cachedSmtpSettings.smtp_host && cachedSmtpSettings.smtp_user && cachedSmtpSettings.smtp_pass) {
+    return nodemailer.createTransport({
+      host: cachedSmtpSettings.smtp_host,
+      port: Number(cachedSmtpSettings.smtp_port || 465),
+      secure: Number(cachedSmtpSettings.smtp_port || 465) === 465,
+      auth: {
+        user: cachedSmtpSettings.smtp_user,
+        pass: cachedSmtpSettings.smtp_pass,
+      },
+    });
+  }
+  
+  // Fallback to environment variables
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -787,16 +823,8 @@ async function startServer() {
       return res.status(401).json({ message: "Invalid credentials" });
     }
     
-    // Check if verified - temporarily disabled for testing
-    // if (user.is_verified === 0) {
-    //   return res.status(403).json({ 
-    //     message: "Compte non vérifié. Veuillez vérifier votre boîte de réception pour activer votre compte.",
-    //     unverified: true,
-    //     email: user.email
-    //   });
-    // }
-
-    const token = jwt.sign({ id: user.id, role: user.role, agency_id: user.agency_id, branch_id: user.branch_id }, JWT_SECRET);
+    // Token expires in 30 minutes
+    const token = jwt.sign({ id: user.id, role: user.role, agency_id: user.agency_id, branch_id: user.branch_id }, JWT_SECRET, { expiresIn: '30m' });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, agency_id: user.agency_id, branch_id: user.branch_id } });
   });
 
@@ -911,6 +939,13 @@ async function startServer() {
 
   app.post("/api/users", authenticateToken, async (req, res) => {
     const { name, email, password, role, agency_id, branch_id } = req.body;
+    
+    // Email validation - must be a valid email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      return res.status(400).json({ message: "Email invalide. Veuillez entrer une adresse email valide." });
+    }
+    
     const hashedPassword = bcrypt.hashSync(password, 10);
     
     // Use authenticated user's agency_id/branch_id if not provided
@@ -1939,6 +1974,7 @@ async function startServer() {
       const { agency_id, branch_id, role } = req.user;
       
       const isSuperAdmin = role === 'superadmin';
+      const isAdmin = role === 'admin';
       
       const [carsResult, rentalsResult, customersResult, repairsResult] = await Promise.all([
         pool.query(`SELECT COUNT(*) as count FROM cars ${!isSuperAdmin && agency_id ? 'WHERE agency_id = $1' : ''}`, !isSuperAdmin && agency_id ? [agency_id] : []),
@@ -1947,9 +1983,10 @@ async function startServer() {
         pool.query(`SELECT COUNT(*) as count FROM repairs`)
       ]);
       
+      // Active rentals: admins and agents see all active rentals (not filtered by branch)
       const activeRentalsResult = await pool.query(
-        `SELECT COUNT(*) as count FROM rentals WHERE status = 'active' ${!isSuperAdmin && branch_id ? 'AND branch_id = $1' : ''}`,
-        !isSuperAdmin && branch_id ? [branch_id] : []
+        `SELECT COUNT(*) as count FROM rentals WHERE status = 'active' ${!isSuperAdmin && !isAdmin && agency_id ? 'AND agency_id = $1' : ''}`,
+        !isSuperAdmin && !isAdmin && agency_id ? [agency_id] : []
       );
       
       const availableCarsResult = await pool.query(
@@ -1976,9 +2013,9 @@ async function startServer() {
         `SELECT r.*, c.brand, c.model, c.registration FROM rentals r 
          JOIN cars c ON r.car_id = c.id 
          WHERE r.status = 'active' 
-         ${!isSuperAdmin && branch_id ? 'AND r.branch_id = $1' : ''}
+         ${!isSuperAdmin && !isAdmin && agency_id ? 'AND r.agency_id = $1' : ''}
          ORDER BY r.end_date ASC LIMIT 10`,
-        !isSuperAdmin && branch_id ? [branch_id] : []
+        !isSuperAdmin && !isAdmin && agency_id ? [agency_id] : []
       );
       
       res.json({
@@ -2006,8 +2043,10 @@ async function startServer() {
     }
   });
 
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    // Load SMTP settings from database after server starts
+    await loadSmtpSettings();
   });
 }
 

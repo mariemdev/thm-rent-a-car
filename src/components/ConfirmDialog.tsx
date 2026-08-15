@@ -18,6 +18,7 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   title: string;
   description: string;
+  confirmText?: string;
 }
 
 export function ConfirmDialog({
@@ -26,6 +27,7 @@ export function ConfirmDialog({
   onConfirm,
   title,
   description,
+  confirmText,
 }: ConfirmDialogProps) {
   const { t } = useTranslation();
 
@@ -58,7 +60,7 @@ export function ConfirmDialog({
             }}
             className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold h-11 shadow-lg shadow-red-100 transition-all active:scale-[0.98]"
           >
-            {t("common.delete")}
+            {confirmText || t("common.delete")}
           </Button>
         </DialogFooter>
       </DialogContent>
