@@ -359,132 +359,137 @@ async function initializeDatabase() {
       console.log('Created admin user');
     }
 
-    // Seed brands - only if table is empty (PRODUCTION SAFE)
+    // Seed brands - only if table is empty AND SEED_TEST_DATA is true (PRODUCTION SAFE)
     console.log('Seeding brands...');
     const brandCount = await pool.query('SELECT COUNT(*) as count FROM brands');
-    if (brandCount.rows[0].count === 0) {
+    if (brandCount.rows[0].count === 0 && process.env.SEED_TEST_DATA === 'true') {
       const brands = ["Mercedes-Benz", "BMW", "Audi", "Volkswagen", "Peugeot", "Renault", "Toyota", "Honda", "Ford", "Nissan", "Hyundai", "Kia", "Citroën", "Fiat", "Opel", "Volvo", "Skoda", "Seat", "Mazda", "Suzuki", "Mitsubishi", "Subaru", "Lexus", "Infiniti", "Acura", "Tesla", "Porsche", "Jaguar", "Land Rover", "Mini", "Smart", "Ferrari", "Lamborghini", "Maserati", "Bentley", "Rolls-Royce", "Bugatti"];
       for (const brand of brands) {
         await pool.query('INSERT INTO brands (name) VALUES ($1)', [brand]);
       }
       console.log('Seeded brands');
     } else {
-      console.log('Brands already exist, skipping seeding (PROTECTION: preserving existing data)');
+      console.log('Brands already exist or SEED_TEST_DATA is false, skipping seeding (PROTECTION: preserving existing data)');
     }
 
-    // Seed colors - only if table is empty (PRODUCTION SAFE)
+    // Seed colors - only if table is empty AND SEED_TEST_DATA is true (PRODUCTION SAFE)
     console.log('Seeding colors...');
     const colorCount = await pool.query('SELECT COUNT(*) as count FROM colors');
-    if (colorCount.rows[0].count === 0) {
+    if (colorCount.rows[0].count === 0 && process.env.SEED_TEST_DATA === 'true') {
       const colors = ["Noir", "Blanc", "Gris", "Argent", "Bleu", "Rouge", "Vert", "Jaune", "Orange", "Marron", "Beige", "Bronze", "Or", "Rose", "Violet", "Turquoise", "Cyan", "Magenta", "Lavande", "Corail", "Indigo", "Olive", "Kaki", "Sable", "Crème", "Ivoire", "Écru", "Anthracite", "Champagne", "Bordeaux", "Bleu Marine"];
       for (const color of colors) {
         await pool.query('INSERT INTO colors (name) VALUES ($1)', [color]);
       }
       console.log('Seeded colors');
     } else {
-      console.log('Colors already exist, skipping seeding (PROTECTION: preserving existing data)');
+      console.log('Colors already exist or SEED_TEST_DATA is false, skipping seeding (PROTECTION: preserving existing data)');
     }
 
     console.log('Seeding agency and branches...');
     let agencyId, branchId;
 
-    // Check if agency exists
-    const existingAgency = await pool.query('SELECT id FROM agencies WHERE name = $1', ["THM RENT A CAR"]);
-    if (existingAgency.rows.length === 0) {
-      console.log('Creating agency...');
-      const agencyResult = await pool.query(
-        'INSERT INTO agencies (name, address, phone) VALUES ($1, $2, $3) RETURNING id',
-        ["THM RENT A CAR", "Tunis, Tunisie", "+216 71 000 000"]
-      );
-      agencyId = agencyResult.rows[0].id;
-      console.log('Agency created with ID:', agencyId);
-    } else {
-      agencyId = existingAgency.rows[0].id;
-      console.log('Agency already exists with ID:', agencyId);
-    }
+    // Only seed test data if SEED_TEST_DATA is true
+    if (process.env.SEED_TEST_DATA === 'true') {
+      // Check if agency exists
+      const existingAgency = await pool.query('SELECT id FROM agencies WHERE name = $1', ["THM RENT A CAR"]);
+      if (existingAgency.rows.length === 0) {
+        console.log('Creating agency...');
+        const agencyResult = await pool.query(
+          'INSERT INTO agencies (name, address, phone) VALUES ($1, $2, $3) RETURNING id',
+          ["THM RENT A CAR", "Tunis, Tunisie", "+216 71 000 000"]
+        );
+        agencyId = agencyResult.rows[0].id;
+        console.log('Agency created with ID:', agencyId);
+      } else {
+        agencyId = existingAgency.rows[0].id;
+        console.log('Agency already exists with ID:', agencyId);
+      }
 
-    // Check if branch exists
-    const existingBranch = await pool.query('SELECT id FROM branches WHERE name = $1 AND agency_id = $2', ["Tunis", agencyId]);
-    if (existingBranch.rows.length === 0) {
-      console.log('Creating branch...');
-      const branchResult = await pool.query(
-        'INSERT INTO branches (name, address, phone, agency_id) VALUES ($1, $2, $3, $4) RETURNING id',
-        ["Tunis", "Tunis Centre", "+216 71 000 001", agencyId]
-      );
-      branchId = branchResult.rows[0].id;
-      console.log('Branch created with ID:', branchId);
-    } else {
-      branchId = existingBranch.rows[0].id;
-      console.log('Branch already exists with ID:', branchId);
-    }
+      // Check if branch exists
+      const existingBranch = await pool.query('SELECT id FROM branches WHERE name = $1 AND agency_id = $2', ["Tunis", agencyId]);
+      if (existingBranch.rows.length === 0) {
+        console.log('Creating branch...');
+        const branchResult = await pool.query(
+          'INSERT INTO branches (name, address, phone, agency_id) VALUES ($1, $2, $3, $4) RETURNING id',
+          ["Tunis", "Tunis Centre", "+216 71 000 001", agencyId]
+        );
+        branchId = branchResult.rows[0].id;
+        console.log('Branch created with ID:', branchId);
+      } else {
+        branchId = existingBranch.rows[0].id;
+        console.log('Branch already exists with ID:', branchId);
+      }
 
-    // Check if second branch exists
-    const existingBranch2 = await pool.query('SELECT id FROM branches WHERE name = $1 AND agency_id = $2', ["Bizerte", agencyId]);
-    if (existingBranch2.rows.length === 0) {
-      console.log('Creating second branch...');
+      // Check if second branch exists
+      const existingBranch2 = await pool.query('SELECT id FROM branches WHERE name = $1 AND agency_id = $2', ["Bizerte", agencyId]);
+      if (existingBranch2.rows.length === 0) {
+        console.log('Creating second branch...');
+        await pool.query(
+          'INSERT INTO branches (name, address, phone, agency_id) VALUES ($1, $2, $3, $4)',
+          ["Bizerte", "Bizerte Port", "+216 72 000 002", agencyId]
+        );
+        console.log('Second branch created');
+      } else {
+        console.log('Second branch already exists');
+      }
+
+      console.log('Seeding test cars...');
+      const testCars = [
+        { brand: "Mercedes-Benz", model: "Classe S", reg: "AA-123-BB", daily_price: 350 },
+        { brand: "BMW", model: "Série 5", reg: "CC-456-DD", daily_price: 280 },
+        { brand: "Audi", model: "A6", reg: "EE-789-FF", daily_price: 300 },
+        { brand: "Tesla", model: "Model 3", reg: "GG-012-HH", daily_price: 250 },
+        { brand: "Porsche", model: "911", reg: "II-345-JJ", daily_price: 450 }
+      ];
+
+      for (const car of testCars) {
+        // Check if car already exists by registration
+        const existingCar = await pool.query('SELECT id FROM cars WHERE registration = $1', [car.reg]);
+        if (existingCar.rows.length === 0) {
+          await pool.query(
+            'INSERT INTO cars (brand, model, registration, mileage, agency_id, branch_id, daily_price, images) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+            [car.brand, car.model, car.reg, 5000, agencyId || null, branchId || null, car.daily_price, JSON.stringify([`https://picsum.photos/seed/${car.reg}/800/600`])]
+          );
+          console.log('Car seeded:', car.reg);
+        } else {
+          console.log('Car already exists, skipping:', car.reg);
+        }
+      }
+
+      // Update admin users with agency_id
+      console.log('Updating admin users with agency_id...');
       await pool.query(
-        'INSERT INTO branches (name, address, phone, agency_id) VALUES ($1, $2, $3, $4)',
-        ["Bizerte", "Bizerte Port", "+216 72 000 002", agencyId]
+        'UPDATE users SET agency_id = $1, branch_id = $2 WHERE role = $3 OR role = $4',
+        [agencyId, branchId, 'superadmin', 'admin']
       );
-      console.log('Second branch created');
+      console.log('Admin users updated');
+
+      // Seed test customers
+      console.log('Seeding test customers...');
+      const testCustomers = [
+        { type: 'individual', name: 'Ben Ali', first_name: 'Ahmed', phone: '+216 71 123 456', email: 'ahmed.benali@example.com', id_number: '12345678' },
+        { type: 'individual', name: 'Trabelsi', first_name: 'Fatma', phone: '+216 74 987 654', email: 'fatma.trabelsi@example.com', id_number: '87654321' },
+        { type: 'company', name: 'Société ABC', first_name: '', phone: '+216 71 555 666', email: 'contact@abc.tn', id_number: '1234567/A/M/000' }
+      ];
+
+      for (const customer of testCustomers) {
+        // Check if customer already exists by id_number
+        const existingCustomer = await pool.query('SELECT id FROM customers WHERE id_number = $1', [customer.id_number]);
+        if (existingCustomer.rows.length === 0) {
+          await pool.query(
+            'INSERT INTO customers (type, name, first_name, phone, email, id_number, agency_id) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+            [customer.type, customer.name, customer.first_name, customer.phone, customer.email, customer.id_number, agencyId]
+          );
+          console.log('Customer seeded:', customer.name);
+        } else {
+          console.log('Customer already exists, skipping:', customer.name);
+        }
+      }
+
+      console.log('Seeded agency, branches, and test cars');
     } else {
-      console.log('Second branch already exists');
+      console.log('SEED_TEST_DATA is false, skipping test data seeding (PRODUCTION MODE: using only manually entered data)');
     }
-
-    console.log('Seeding test cars...');
-    const testCars = [
-      { brand: "Mercedes-Benz", model: "Classe S", reg: "AA-123-BB", daily_price: 350 },
-      { brand: "BMW", model: "Série 5", reg: "CC-456-DD", daily_price: 280 },
-      { brand: "Audi", model: "A6", reg: "EE-789-FF", daily_price: 300 },
-      { brand: "Tesla", model: "Model 3", reg: "GG-012-HH", daily_price: 250 },
-      { brand: "Porsche", model: "911", reg: "II-345-JJ", daily_price: 450 }
-    ];
-
-    for (const car of testCars) {
-      // Check if car already exists by registration
-      const existingCar = await pool.query('SELECT id FROM cars WHERE registration = $1', [car.reg]);
-      if (existingCar.rows.length === 0) {
-        await pool.query(
-          'INSERT INTO cars (brand, model, registration, mileage, agency_id, branch_id, daily_price, images) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-          [car.brand, car.model, car.reg, 5000, agencyId || null, branchId || null, car.daily_price, JSON.stringify([`https://picsum.photos/seed/${car.reg}/800/600`])]
-        );
-        console.log('Car seeded:', car.reg);
-      } else {
-        console.log('Car already exists, skipping:', car.reg);
-      }
-    }
-
-    // Update admin users with agency_id
-    console.log('Updating admin users with agency_id...');
-    await pool.query(
-      'UPDATE users SET agency_id = $1, branch_id = $2 WHERE role = $3 OR role = $4',
-      [agencyId, branchId, 'superadmin', 'admin']
-    );
-    console.log('Admin users updated');
-
-    // Seed test customers
-    console.log('Seeding test customers...');
-    const testCustomers = [
-      { type: 'individual', name: 'Ben Ali', first_name: 'Ahmed', phone: '+216 71 123 456', email: 'ahmed.benali@example.com', id_number: '12345678' },
-      { type: 'individual', name: 'Trabelsi', first_name: 'Fatma', phone: '+216 74 987 654', email: 'fatma.trabelsi@example.com', id_number: '87654321' },
-      { type: 'company', name: 'Société ABC', first_name: '', phone: '+216 71 555 666', email: 'contact@abc.tn', id_number: '1234567/A/M/000' }
-    ];
-
-    for (const customer of testCustomers) {
-      // Check if customer already exists by id_number
-      const existingCustomer = await pool.query('SELECT id FROM customers WHERE id_number = $1', [customer.id_number]);
-      if (existingCustomer.rows.length === 0) {
-        await pool.query(
-          'INSERT INTO customers (type, name, first_name, phone, email, id_number, agency_id) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-          [customer.type, customer.name, customer.first_name, customer.phone, customer.email, customer.id_number, agencyId]
-        );
-        console.log('Customer seeded:', customer.name);
-      } else {
-        console.log('Customer already exists, skipping:', customer.name);
-      }
-    }
-
-    console.log('Seeded agency, branches, and test cars');
 
     // Seed settings
     const settingsCount = await pool.query('SELECT COUNT(*) as count FROM settings');
@@ -954,20 +959,11 @@ async function startServer() {
     
     try {
       const result = await pool.query(
-        'INSERT INTO users (name, email, password, role, agency_id, branch_id, created_by_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        'INSERT INTO users (name, email, password, role, agency_id, branch_id, created_by_id, is_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, 1) RETURNING *',
         [name, email, hashedPassword, role, finalAgencyId, finalBranchId, req.user.id]
       );
       
-      // Send verification email
-      const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      await pool.query('UPDATE users SET verification_token = $1 WHERE id = $2', [token, result.rows[0].id]);
-      
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-      const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
-      const baseUrl = `${protocol}://${host}`;
-      
-      sendVerificationEmail(email, name, token, baseUrl);
-      
+      // Users created by admin are automatically verified, no need to send verification email
       res.json(result.rows[0]);
     } catch (error: any) {
       if (error.code === '23505') {
@@ -1985,8 +1981,8 @@ async function startServer() {
       
       // Active rentals: admins and agents see all active rentals (not filtered by branch)
       const activeRentalsResult = await pool.query(
-        `SELECT COUNT(*) as count FROM rentals WHERE status = 'active' ${!isSuperAdmin && !isAdmin && agency_id ? 'AND agency_id = $1' : ''}`,
-        !isSuperAdmin && !isAdmin && agency_id ? [agency_id] : []
+        `SELECT COUNT(*) as count FROM rentals WHERE status = 'active' ${!isSuperAdmin && branch_id ? 'AND branch_id = $1' : ''}`,
+        !isSuperAdmin && branch_id ? [branch_id] : []
       );
       
       const availableCarsResult = await pool.query(
@@ -2013,9 +2009,9 @@ async function startServer() {
         `SELECT r.*, c.brand, c.model, c.registration FROM rentals r 
          JOIN cars c ON r.car_id = c.id 
          WHERE r.status = 'active' 
-         ${!isSuperAdmin && !isAdmin && agency_id ? 'AND r.agency_id = $1' : ''}
+         ${!isSuperAdmin && branch_id ? 'AND r.branch_id = $1' : ''}
          ORDER BY r.end_date ASC LIMIT 10`,
-        !isSuperAdmin && !isAdmin && agency_id ? [agency_id] : []
+        !isSuperAdmin && branch_id ? [branch_id] : []
       );
       
       res.json({
