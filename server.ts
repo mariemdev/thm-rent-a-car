@@ -24,13 +24,18 @@ declare global {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const pool = new Pool({
-  host: process.env.PG_HOST || 'localhost',
-  port: Number(process.env.PG_PORT) || 5432,
-  database: process.env.PG_DATABASE || 'thm_rent_a_car',
-  user: process.env.PG_USER || 'postgres',
-  password: process.env.PG_PASSWORD || 'postgres',
-});
+// Support both DATABASE_URL and individual PG_* variables
+const pool = new Pool(
+  process.env.DATABASE_URL 
+    ? { connectionString: process.env.DATABASE_URL }
+    : {
+        host: process.env.PG_HOST || 'localhost',
+        port: Number(process.env.PG_PORT) || 5432,
+        database: process.env.PG_DATABASE || 'thm_rent_a_car',
+        user: process.env.PG_USER || 'postgres',
+        password: process.env.PG_PASSWORD || 'postgres',
+      }
+);
 
 const JWT_SECRET = "super-secret-key";
 
@@ -2014,6 +2019,9 @@ async function startServer() {
         !isSuperAdmin && branch_id ? [branch_id] : []
       );
       
+      // Only show financial data to admins and superadmins
+      const showFinancialData = isSuperAdmin || isAdmin;
+      
       res.json({
         totalCars: carsResult.rows[0].count,
         totalRentals: rentalsResult.rows[0].count,
@@ -2021,13 +2029,13 @@ async function startServer() {
         totalRepairs: repairsResult.rows[0].count,
         activeRentals: activeRentalsResult.rows[0].count,
         availableCars: availableCarsResult.rows[0].count,
-        totalRevenue: totalRevenueResult.rows[0].total,
+        totalRevenue: showFinancialData ? totalRevenueResult.rows[0].total : 0,
         totalClients: customersResult.rows[0].count,
-        financeSummary: {
+        financeSummary: showFinancialData ? {
           totalContracts: totalRevenueResult.rows[0].total,
           totalReceived: amountPaidResult.rows[0].total,
           totalRemaining: amountRemainingResult.rows[0].total
-        },
+        } : null,
         upcomingReturns: upcomingReturnsResult.rows
       });
     } catch (error: any) {

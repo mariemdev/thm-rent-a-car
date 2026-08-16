@@ -17,7 +17,8 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
+      // Disable HMR for production to avoid WebSocket errors
+      hmr: process.env.NODE_ENV === 'production' ? false : process.env.DISABLE_HMR !== 'true',
       allowedHosts: ['thmrentcar.com', 'www.thmrentcar.com']
     },
   };
