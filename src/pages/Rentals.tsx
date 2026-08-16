@@ -634,7 +634,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
       const isIndividual = cust.type === 'individual';
       
       const driverInfo = isIndividual ? {
-        customer_name: `${cust.name || ""} ${cust.first_name || ""}`.trim(),
+        customer_name: `${cust.first_name || ""} ${cust.name || ""}`.trim(),
         customer_phone: cust.phone || "",
         customer_id_type: cust.id_type || "CIN",
         customer_id_number: cust.id_number || "",
@@ -697,7 +697,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
         return {
           ...prev,
           driver_id: v,
-          customer_name: isCorp && companyCust ? companyCust.name : `${cust.name || ""} ${cust.first_name || ""}`.trim(),
+          customer_name: isCorp && companyCust ? companyCust.name : `${cust.first_name || ""} ${cust.name || ""}`.trim(),
           customer_phone: isCorp && companyCust ? companyCust.phone || "" : cust.phone || "",
           customer_id_type: isCorp && companyCust ? companyCust.id_type || "CIN" : cust.id_type || "CIN",
           customer_id_number: isCorp && companyCust ? companyCust.id_number || "" : cust.id_number || "",
@@ -733,7 +733,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
       setNewRental(prev => ({
         ...prev,
         second_driver_id: v,
-        second_driver_name: `${cust.name || ""} ${cust.first_name || ""}`.trim(),
+        second_driver_name: `${cust.first_name || ""} ${cust.name || ""}`.trim(),
         second_driver_phone: cust.phone || "",
         second_driver_id_number: cust.id_number || "",
         second_driver_id_issued_date: cust.id_issued_date || "",
@@ -812,7 +812,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
         result.customer_firstname = cust.first_name || "";
         result.customer_lastname = cust.name || "";
         if (!isCorp) {
-          result.customer_name = `${cust.name || ""} ${cust.first_name || ""}`.trim();
+          result.customer_name = `${cust.first_name || ""} ${cust.name || ""}`.trim();
         }
       }
     }
@@ -827,7 +827,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
         if (driverCust) {
           return {
             ...baseResult,
-            driver_name: `${driverCust.name || ""} ${driverCust.first_name || ""}`.trim(),
+            driver_name: `${driverCust.first_name || ""} ${driverCust.name || ""}`.trim(),
             driver_firstname: driverCust.first_name || "",
             driver_lastname: driverCust.name || "",
             driver_phone: driverCust.phone || "",
@@ -851,7 +851,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
         if (driverCust) {
           return {
             ...result,
-            driver_name: `${driverCust.name || ""} ${driverCust.first_name || ""}`.trim(),
+            driver_name: `${driverCust.first_name || ""} ${driverCust.name || ""}`.trim(),
             driver_firstname: driverCust.first_name || "",
             driver_lastname: driverCust.name || "",
             driver_phone: driverCust.phone || "",
@@ -912,7 +912,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
       const primaryDriverCust = customers.find(c => c.id.toString() === data.driver_id?.toString());
       const firstDriverName = data.is_client_first_driver 
         ? data.customer_name 
-        : (primaryDriverCust ? `${primaryDriverCust.name || ""} ${primaryDriverCust.first_name || ""}`.trim() : "");
+        : (primaryDriverCust ? `${primaryDriverCust.first_name || ""} ${primaryDriverCust.name || ""}`.trim() : "");
       const secondDriverName = data.second_driver_name;
 
       if (firstDriverName && secondDriverName && firstDriverName.trim().toLowerCase() === secondDriverName.trim().toLowerCase() && firstDriverName.trim() !== "") {
@@ -1013,6 +1013,12 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
 
     if (data.km_depart === undefined || data.km_depart === "" || isNaN(Number(data.km_depart)) || Number(data.km_depart) < 0) {
       toast.error(getMsg("Le kilométrage de départ est obligatoire et doit être un nombre positif.", "Starting mileage is mandatory and must be a positive number.", "عداد المسافة عند البدء إلزامي ويجب أن يكون رقمًا موجبًا."));
+      return false;
+    }
+
+    // Additional validation for modification: prevent emptying required fields
+    if (data.daily_price === undefined || data.daily_price === "" || isNaN(Number(data.daily_price)) || Number(data.daily_price) <= 0) {
+      toast.error(getMsg("Le prix journalier est obligatoire et doit être supérieur à 0.", "Daily price is mandatory and must be greater than 0.", "السعر اليومي إلزامي ويجب أن يكون أكبر من 0."));
       return false;
     }
 
@@ -1464,6 +1470,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
         departure_time: activationRental.departure_time,
         return_time: activationRental.return_time,
         car_id: parseInt(activationRental.car_id),
+        branch_id: activationRental.branch_id,
         driver_id: selectedDriverId,
         second_driver_id: activationRental.second_driver_id && activationRental.second_driver_id !== "none" ? parseInt(activationRental.second_driver_id) : null,
         km_depart: parseInt(activationRental.km_depart || "0"),
@@ -1506,7 +1513,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
   const handleCancelRental = async () => {
     try {
       if (!selectedRental) return;
-      await api.updateRental(selectedRental.id, { status: 'cancelled' });
+      await api.updateRental(selectedRental.id, { status: 'cancelled', branch_id: selectedRental.branch_id });
       toast.success("Location annulée avec succès");
       setIsCancelOpen(false);
       fetchData();
@@ -3177,7 +3184,9 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
                           Conducteur: <span className="font-semibold text-slate-700">{rental.driver_name}</span>
                         </div>
                       )}
-                      <div className="text-[10.5px] font-bold text-indigo-600 mt-1 bg-indigo-50/60 inline-block px-1.5 py-0.5 rounded-md">Contrat: {rental.contract_number || rental.id}</div>
+                      {rental.contract_number && (
+                        <div className="text-[10.5px] font-bold text-indigo-600 mt-1 bg-indigo-50/60 inline-block px-1.5 py-0.5 rounded-md">Contrat: {rental.contract_number}</div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="font-bold text-slate-900">{rental.brand} {rental.model}</div>
@@ -3350,7 +3359,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
                                     new_payment: "0",
                                     new_payment_mode: "Espèces"
                                   });
-                                  setSwapBranchFilter(rental.branch_id?.toString() || "all");
+                                  setSwapBranchFilter("all");
                                   setIsSwapOpen(true);
                                 }} 
                                 className="rounded-xl flex items-center gap-3 p-2.5 cursor-pointer group focus:bg-indigo-50 focus:text-indigo-700 transition-all"
@@ -3459,6 +3468,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
         onConfirm={handleCancelRental}
         title="Annuler la location"
         description={`Êtes-vous sûr de vouloir annuler la location de ${selectedRental?.customer_name} ? Cette action est irréversible.`}
+        confirmText="Annuler"
       />
 
       <ConfirmDialog
@@ -3559,7 +3569,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
                           new_car_id: v,
                           new_car_start_mileage: car?.mileage?.toString() || "",
                           new_car_start_fuel: 0, // MUST BE EMPTY (0) as requested!
-                          daily_price: car?.daily_price?.toString() || swappingData.daily_price || "0"
+                          daily_price: "" // Empty by default as requested
                         });
                       }}
                     >
@@ -3571,7 +3581,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
                           new_car_id: "",
                           new_car_start_mileage: "",
                           new_car_start_fuel: 0,
-                          daily_price: "0"
+                          daily_price: ""
                         })}
                       >
                         <SelectValue placeholder="Choisir un véhicule disponible" />
@@ -3722,17 +3732,27 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
                       <div className="flex justify-between items-center">
                         <Label htmlFor="swap_new_payment" className="text-xs font-bold text-indigo-950 uppercase tracking-wider">Montant versé (DT)</Label>
                         {remainingToPay > 0 && (
-                          <Button 
-                            type="button" 
-                            variant="link" 
-                            size="sm" 
-                            onClick={() => {
-                              setSwappingData({ ...swappingData, new_payment: remainingToPay.toFixed(3) });
-                            }}
-                            className="text-xs font-black text-indigo-700 hover:text-indigo-950 p-0 h-auto flex items-center gap-1"
-                          >
-                            ✓ Tout payer ({remainingToPay.toFixed(3)} DT)
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="swap_pay_all"
+                              checked={swappingData.pay_all || false}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSwappingData({ ...swappingData, new_payment: remainingToPay.toFixed(3), pay_all: true });
+                                } else {
+                                  setSwappingData({ ...swappingData, new_payment: "0", pay_all: false });
+                                }
+                              }}
+                              className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                            />
+                            <label 
+                              htmlFor="swap_pay_all" 
+                              className="text-xs font-black text-indigo-700 hover:text-indigo-950 cursor-pointer flex items-center gap-1"
+                            >
+                              Tout payer ({remainingToPay.toFixed(3)} DT)
+                            </label>
+                          </div>
                         )}
                       </div>
                       <Input 
@@ -3742,7 +3762,7 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
                         step="0.001"
                         placeholder="0.000"
                         value={swappingData.new_payment || "0"}
-                        onChange={(e) => setSwappingData({ ...swappingData, new_payment: e.target.value })}
+                        onChange={(e) => setSwappingData({ ...swappingData, new_payment: e.target.value, pay_all: false })}
                         className="rounded-xl h-11 bg-white border-slate-200 focus:border-indigo-500 focus:ring-indigo-500 font-extrabold text-base text-green-700 shadow-sm"
                       />
                     </div>

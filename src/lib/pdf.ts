@@ -1016,8 +1016,8 @@ export const generateInvoicePDF = (customer: any, rentals: any[], settings: any)
   doc.text(format(new Date(), "dd/MM/yyyy"), 40, 65);
 
   // Right: Client Box (Clean text lines matching Facture N° and Date without a frame)
-  const clientBoxX = 108;
-  const fullName = customer.type === "company" ? customer.name : `${customer.name || ""} ${customer.first_name || ""}`;
+  const clientBoxX = 105;
+  const fullName = customer.type === "company" ? customer.name : `${customer.first_name || ""} ${customer.name || ""}`;
   
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
