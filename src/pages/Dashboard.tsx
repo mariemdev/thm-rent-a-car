@@ -70,6 +70,8 @@ export default function Dashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const isAdmin = user.role === 'admin' || user.role === 'superadmin';
 
   useEffect(() => {
     api.getAnalytics()
@@ -141,28 +143,32 @@ export default function Dashboard() {
             <PlusCircle className="w-4 h-4" />
             Nouvelle Location
           </Button>
-          <Button 
-            variant="outline"
-            onClick={() => navigate("/recettes")} 
-            className="rounded-xl border-slate-200 bg-white hover:bg-slate-50 flex items-center gap-2 px-4 h-10"
-          >
-            <Coins className="w-4 h-4 text-emerald-600" />
-            Recettes Financières
-          </Button>
+          {isAdmin && (
+            <Button 
+              variant="outline"
+              onClick={() => navigate("/recettes")} 
+              className="rounded-xl border-slate-200 bg-white hover:bg-slate-50 flex items-center gap-2 px-4 h-10"
+            >
+              <Coins className="w-4 h-4 text-emerald-600" />
+              Recettes Financières
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Recettes encaissées" 
-          value={`${totalReceived.toFixed(3)} DT`} 
-          icon={Coins} 
-          trend={12.4}
-          description="Montant cumulé perçu"
-          color="bg-emerald-600"
-          linkTo="/recettes"
-        />
+        {isAdmin && (
+          <StatCard 
+            title="Recettes encaissées" 
+            value={`${totalReceived.toFixed(3)} DT`} 
+            icon={Coins} 
+            trend={12.4}
+            description="Montant cumulé perçu"
+            color="bg-emerald-600"
+            linkTo="/recettes"
+          />
+        )}
         <StatCard 
           title="Locations Actives" 
           value={activeRentals} 
