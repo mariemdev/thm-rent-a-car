@@ -172,14 +172,23 @@ export const generateContractPDF = (rental: any, settings: any, preparedBy?: str
   }
 
   // Center Arabic/French title with red text
+  // Box is sized to its content so the left column keeps as much width as possible
+  const contractTitle = `CONTRAT DE LOCATION N° ${rental.contract_number || rental.id}`;
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  const titleBoxRight = 145;
+  const titleBoxWidth = Math.min(65, doc.getTextWidth(contractTitle) + 6);
+  const titleBoxX = titleBoxRight - titleBoxWidth;
+  const titleBoxCenter = titleBoxX + titleBoxWidth / 2;
+
   doc.setDrawColor(0);
   doc.setLineWidth(0.4);
-  doc.roundedRect(80, 4, 65, 14.5, 1.5, 1.5, 'D');
-  drawSmartText(doc, "عقد كراء السيارة", 112.5, 8.5, 11, "#C00000", true, "center");
+  doc.roundedRect(titleBoxX, 4, titleBoxWidth, 14.5, 1.5, 1.5, 'D');
+  drawSmartText(doc, "عقد كراء السيارة", titleBoxCenter, 8.5, 11, "#C00000", true, "center");
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0, 0, 0);
-  doc.text(`CONTRAT DE LOCATION N° ${rental.contract_number || rental.id}`, 112.5, 13.5, { align: "center" });
+  doc.text(contractTitle, titleBoxCenter, 13.5, { align: "center" });
   
   drawSmartText(doc, "Autovermietung - Rent a Car", 112.5, 24, 8, "#000000", true, "center");
 
@@ -188,7 +197,15 @@ export const generateContractPDF = (rental: any, settings: any, preparedBy?: str
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0, 0, 0);
+
+  const addressMaxWidth = titleBoxX - 2 - 15;
+  let addressFontSize = 7.5;
+  while (addressFontSize > 5.5 && doc.getTextWidth(COMPANY_INFO.address) > addressMaxWidth) {
+    addressFontSize -= 0.25;
+    doc.setFontSize(addressFontSize);
+  }
   doc.text(COMPANY_INFO.address, 15, 13);
+  doc.setFontSize(7.5);
   doc.text(`Mobile : ${COMPANY_INFO.mobile}`, 15, 17);
   doc.text(`WhatsApp : ${COMPANY_INFO.whatsapp}`, 15, 21);
   doc.text(`MF : ${COMPANY_INFO.mf}`, 15, 25);
@@ -1016,8 +1033,8 @@ export const generateInvoicePDF = (customer: any, rentals: any[], settings: any)
   doc.text(format(new Date(), "dd/MM/yyyy"), 40, 65);
 
   // Right: Client Box (Clean text lines matching Facture N° and Date without a frame)
-  const clientBoxX = 105;
-  const fullName = customer.type === "company" ? customer.name : `${customer.first_name || ""} ${customer.name || ""}`;
+  const clientBoxX = 108;
+  const fullName = customer.type === "company" ? customer.name : `${customer.name || ""} ${customer.first_name || ""}`;
   
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
