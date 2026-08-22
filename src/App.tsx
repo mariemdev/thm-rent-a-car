@@ -23,7 +23,8 @@ import {
   Coins
 } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
-import { api } from "@/lib/api";
+import { api, isSessionInvalidError } from "@/lib/api";
+import { clearSession, getToken, getUser, setSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Toaster } from "@/components/ui/sonner";
@@ -42,7 +43,7 @@ import { Users as UsersIcon } from "lucide-react";
 const Sidebar = ({ mobile = false, setOpen }: { mobile?: boolean, setOpen?: (o: boolean) => void }) => {
   const { t } = useTranslation();
   const location = useLocation();
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const user = getUser();
 
   const groups = [
     {
@@ -55,7 +56,7 @@ const Sidebar = ({ mobile = false, setOpen }: { mobile?: boolean, setOpen?: (o: 
       title: t("nav.group_operations"),
       items: [
         { icon: Key, label: t("nav.rentals"), path: "/rentals" },
-        ...(user.role !== 'agent' ? [{ icon: Coins, label: "Recettes de location", path: "/recettes" }] : []),
+        ...(user?.role !== 'agent' ? [{ icon: Coins, label: "Recettes de location", path: "/recettes" }] : []),
       ]
     },
     {
@@ -68,10 +69,10 @@ const Sidebar = ({ mobile = false, setOpen }: { mobile?: boolean, setOpen?: (o: 
       title: t("nav.group_fleet"),
       items: [
         { icon: Car, label: t("nav.cars"), path: "/cars" },
-        ...(user.role !== 'agent' ? [{ icon: MapPin, label: t("nav.branches"), path: "/branches" }] : []),
+        ...(user?.role !== 'agent' ? [{ icon: MapPin, label: t("nav.branches"), path: "/branches" }] : []),
       ]
     },
-    ...(user.role !== 'agent' ? [{
+    ...(user?.role !== 'agent' ? [{
       title: t("nav.group_system"),
       items: [
         { icon: UsersIcon, label: "Utilisateurs", path: "/users" }
@@ -117,19 +118,18 @@ const Sidebar = ({ mobile = false, setOpen }: { mobile?: boolean, setOpen?: (o: 
       <div className="p-4 mt-auto border-t border-slate-800">
         <div className="flex items-center gap-3 px-4 py-3 mb-2">
           <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold text-blue-400">
-            {user.name?.[0]}
+            {user?.name?.[0]}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate">{user.name}</p>
-            <p className="text-xs text-slate-500 truncate uppercase">{user.role}</p>
+            <p className="text-sm font-semibold truncate">{user?.name}</p>
+            <p className="text-xs text-slate-500 truncate uppercase">{user?.role}</p>
           </div>
         </div>
         <Button 
           variant="ghost" 
           className="w-full justify-start text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-xl"
           onClick={() => {
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
+            clearSession();
             window.location.href = "/login";
           }}
         >
@@ -238,8 +238,38 @@ const Navbar = () => {
 };
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const token = localStorage.getItem("token");
+  const token = getToken();
+  const [checking, setChecking] = useState(!!token);
+  const [sessionInvalid, setSessionInvalid] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+
+    let mounted = true;
+    api.me()
+      .then((user) => {
+        if (mounted) setSession(token, user);
+      })
+      .catch((error) => {
+        if (mounted && isSessionInvalidError(error)) {
+          setSessionInvalid(true);
+        }
+      })
+      .finally(() => {
+        if (mounted) setChecking(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [token]);
+
   if (!token) return <Navigate to="/login" replace />;
+  if (sessionInvalid) return <Navigate to="/login" replace />;
+  if (checking) {
+    return <div className="min-h-screen flex items-center justify-center text-slate-500">Chargement...</div>;
+  }
+
   return <>{children}</>;
 };
 
@@ -276,22 +306,22 @@ export default function App() {
                     <Route path="/rentals/new" element={<Rentals showAdd={true} />} />
                     <Route path="/branches" element={
                       (() => {
-                        const u = JSON.parse(localStorage.getItem("user") || "{}");
-                        return u.role !== 'agent' ? <Branches /> : <Navigate to="/" replace />;
+                        const u = getUser();
+                        return u?.role !== 'agent' ? <Branches /> : <Navigate to="/" replace />;
                       })()
                     } />
                     <Route path="/customers" element={<Customers />} />
                     <Route path="/users" element={
                       (() => {
-                        const u = JSON.parse(localStorage.getItem("user") || "{}");
-                        return u.role !== 'agent' ? <UsersPage /> : <Navigate to="/" replace />;
+                        const u = getUser();
+                        return u?.role !== 'agent' ? <UsersPage /> : <Navigate to="/" replace />;
                       })()
                     } />
                     <Route path="/alerts" element={<Alerts />} />
                     <Route path="/recettes" element={
                       (() => {
-                        const u = JSON.parse(localStorage.getItem("user") || "{}");
-                        return u.role !== 'agent' ? <Recettes /> : <Navigate to="/" replace />;
+                        const u = getUser();
+                        return u?.role !== 'agent' ? <Recettes /> : <Navigate to="/" replace />;
                       })()
                     } />
                   </Routes>
