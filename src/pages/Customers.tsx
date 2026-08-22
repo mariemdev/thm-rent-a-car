@@ -243,10 +243,6 @@ export default function Customers() {
           toast.error("La date de délivrance de la pièce d'identité est obligatoire");
           return;
         }
-        if (!formData.id_issued_place) {
-          toast.error("Le lieu de délivrance de la pièce d'identité est obligatoire");
-          return;
-        }
 
         // Id Dates logical validation
         if (formData.id_issued_date && formData.id_expiry_date && new Date(formData.id_expiry_date) <= new Date(formData.id_issued_date)) {
@@ -261,10 +257,6 @@ export default function Customers() {
         }
         if (!formData.license_issued_date) {
           toast.error("La date de délivrance du permis est obligatoire");
-          return;
-        }
-        if (!formData.license_issued_place) {
-          toast.error("Le lieu de délivrance du permis est obligatoire");
           return;
         }
 
@@ -785,7 +777,7 @@ export default function Customers() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-bold text-slate-700">Lieu de délivrance <span className="text-red-500">*</span></Label>
+                      <Label className="text-sm font-bold text-slate-700">Lieu de délivrance</Label>
                       <Input 
                         placeholder="Lieu"
                         value={formData.id_issued_place || ""}
@@ -839,13 +831,12 @@ export default function Customers() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-bold text-slate-700">Lieu de délivrance <span className="text-red-500">*</span></Label>
+                    <Label className="text-sm font-bold text-slate-700">Lieu de délivrance</Label>
                     <Input 
                       placeholder="Lieu"
                       value={formData.license_issued_place || ""}
                       onChange={(e) => setFormData({...formData, license_issued_place: e.target.value})}
                       className="rounded-xl h-12 border-slate-200 focus:ring-indigo-500 text-base"
-                      required
                     />
                   </div>
                   <div className="space-y-2">
