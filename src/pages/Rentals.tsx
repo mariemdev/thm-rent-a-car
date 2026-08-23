@@ -1016,12 +1016,6 @@ export default function Rentals({ showAdd = false }: { showAdd?: boolean }) {
       return false;
     }
 
-    // Additional validation for modification: prevent emptying required fields
-    if (data.daily_price === undefined || data.daily_price === "" || isNaN(Number(data.daily_price)) || Number(data.daily_price) <= 0) {
-      toast.error(getMsg("Le prix journalier est obligatoire et doit être supérieur à 0.", "Daily price is mandatory and must be greater than 0.", "السعر اليومي إلزامي ويجب أن يكون أكبر من 0."));
-      return false;
-    }
-
     return true;
   };
 
