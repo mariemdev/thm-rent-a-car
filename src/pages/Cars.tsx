@@ -127,7 +127,7 @@ export default function Cars() {
     brand: "",
     model: "",
     registration: "",
-    mileage: "",
+    mileage: 0,
     insurance_start_date: "",
     insurance_expiry_date: "",
     technical_inspection_start_date: "",
