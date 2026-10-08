@@ -32,7 +32,7 @@ const pool = new Pool({
   password: process.env.PG_PASSWORD || 'postgres',
 });
 
-const JWT_SECRET = "super-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
 
 // Initialize Database Schema
 async function initializeDatabase() {
@@ -761,20 +761,31 @@ async function startServer() {
   const authenticateToken = (req: any, res: any, next: any) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ message: "Token manquant" });
+    if (!token) return res.status(401).json({ message: "Token manquant", code: "NO_TOKEN" });
 
     jwt.verify(token, JWT_SECRET, async (err: any, decoded: any) => {
-      if (err) return res.status(403).json({ message: "Token invalide" });
-      
-      // Verify that the user still exists in the database to prevent foreign key errors
-      const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [decoded.id]);
-      const user = userResult.rows[0];
-      if (!user) {
-        return res.status(401).json({ message: "Utilisateur non trouvé. Veuillez vous reconnecter." });
+      if (err) return res.status(401).json({ message: "Token invalide", code: "INVALID_TOKEN" });
+
+      try {
+        // Verify that the user still exists in the database to prevent foreign key errors
+        const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [decoded.id]);
+        const user = userResult.rows[0];
+        if (!user) {
+          return res.status(401).json({
+            message: "Utilisateur non trouvé. Veuillez vous reconnecter.",
+            code: "USER_NOT_FOUND",
+          });
+        }
+
+        req.user = user;
+        next();
+      } catch (error) {
+        console.error("Authentication lookup failed:", error);
+        return res.status(503).json({
+          message: "Service d'authentification temporairement indisponible.",
+          code: "AUTH_UNAVAILABLE",
+        });
       }
-      
-      req.user = user;
-      next();
     });
   };
 
@@ -798,6 +809,18 @@ async function startServer() {
 
     const token = jwt.sign({ id: user.id, role: user.role, agency_id: user.agency_id, branch_id: user.branch_id }, JWT_SECRET);
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, agency_id: user.agency_id, branch_id: user.branch_id } });
+  });
+
+  app.get("/api/auth/me", authenticateToken, async (req, res) => {
+    const user = req.user;
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      agency_id: user.agency_id,
+      branch_id: user.branch_id,
+    });
   });
 
   // Verification & Password Recovery Routes

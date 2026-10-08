@@ -1,7 +1,26 @@
+import { clearSession, getToken } from "./auth";
+
 const API_BASE = "/api";
 
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+const SESSION_INVALID_CODES = new Set(["NO_TOKEN", "INVALID_TOKEN", "USER_NOT_FOUND"]);
+
+export const isSessionInvalidError = (error: unknown) =>
+  error instanceof ApiError && !!error.code && SESSION_INVALID_CODES.has(error.code);
+
 async function request(path: string, options: RequestInit = {}) {
-  const token = localStorage.getItem("token");
+  const token = getToken();
   const headers = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -10,24 +29,33 @@ async function request(path: string, options: RequestInit = {}) {
 
   const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!response.ok) {
-    if (response.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-    }
     const errorText = await response.text();
+    let errorJson: { message?: string; code?: string } | null = null;
     try {
-      const errorJson = JSON.parse(errorText);
-      throw new Error(errorJson.message || errorText);
+      errorJson = JSON.parse(errorText);
     } catch (e) {
-      if (e instanceof Error && e.message !== errorText) throw e;
-      throw new Error(errorText);
+      // Fall back to the response text for non-JSON errors.
     }
+
+    const error = new ApiError(
+      errorJson?.message || errorText || `Request failed with status ${response.status}`,
+      response.status,
+      errorJson?.code
+    );
+    if (isSessionInvalidError(error)) {
+      clearSession();
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+    throw error;
   }
   return response.json();
 }
 
 export const api = {
   login: (credentials: any) => request("/auth/login", { method: "POST", body: JSON.stringify(credentials) }),
+  me: () => request("/auth/me"),
   getAgencies: () => request("/agencies"),
   createAgency: (data: any) => request("/agencies", { method: "POST", body: JSON.stringify(data) }),
   updateAgency: (id: number, data: any) => request(`/agencies/${id}`, { method: "PUT", body: JSON.stringify(data) }),

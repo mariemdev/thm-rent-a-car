@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { api } from "@/lib/api";
+import { setSession } from "@/lib/auth";
 import { toast } from "sonner";
 
 export default function Login() {
@@ -49,8 +50,7 @@ export default function Login() {
     setUnverifiedEmail(null);
     try {
       const { token, user } = await api.login({ email, password });
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      setSession(token, user);
       toast.success(t("common.success"));
       navigate("/");
     } catch (error: any) {
